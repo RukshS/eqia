@@ -1,1 +1,1 @@
-# eqia
+# EQIA
