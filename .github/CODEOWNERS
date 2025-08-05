@@ -7,8 +7,6 @@
 
 # Specific file/directory ownership examples:
 # Documentation files
-*.md @RukshS
-README.md @RukshS
 
 # Configuration files
 pyproject.toml @RukshS
