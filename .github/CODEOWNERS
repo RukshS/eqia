@@ -14,3 +14,4 @@
 *.yml @RukshS
 
 # GitHub workflows and configurations
+/.github/ @RukshS
