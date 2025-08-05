@@ -15,4 +15,3 @@ pyproject.toml @RukshS
 *.yml @RukshS
 
 # GitHub workflows and configurations
-.github/ @RukshS
