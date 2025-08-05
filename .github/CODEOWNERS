@@ -9,7 +9,6 @@
 # Documentation files
 
 # Configuration files
-pyproject.toml @RukshS
 *.toml @RukshS
 *.yaml @RukshS
 *.yml @RukshS
