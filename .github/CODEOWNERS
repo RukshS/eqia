@@ -1,0 +1,20 @@
+# CODEOWNERS file for eqia repository
+# This file defines who owns different parts of the codebase
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global ownership - Repository owner owns everything by default
+* @RukshS
+
+# Specific file/directory ownership examples:
+# Documentation files
+*.md @RukshS
+README.md @RukshS
+
+# Configuration files
+pyproject.toml @RukshS
+*.toml @RukshS
+*.yaml @RukshS
+*.yml @RukshS
+
+# GitHub workflows and configurations
+.github/ @RukshS
