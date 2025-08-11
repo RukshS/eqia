@@ -131,7 +131,7 @@ const Dashboard = () => {
         {/* Sidebar Header */}
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 bg-gradient-to-br from-emarald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-sm">EQ</span>
             </div>
             <span className="font-semibold text-slate-800">EQIA Monitoring</span>
