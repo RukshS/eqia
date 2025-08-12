@@ -32,7 +32,7 @@ class AQIAgentController:
             embedding=self.embeddings,
             client=self.supabase,
             table_name="documents",
-            query_name="match_aira_documents",
+            query_name="match_eqia_documents",
         )
 
         class StreamingCallbackHandler(AsyncCallbackHandler):

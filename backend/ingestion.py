@@ -44,6 +44,6 @@ for i in range(0, len(docs), BATCH_SIZE):
         embeddings,
         client=supabase,
         table_name="documents",
-        query_name="match_aira_documents",
+        query_name="upsert_document",
         chunk_size=1000,
     )
