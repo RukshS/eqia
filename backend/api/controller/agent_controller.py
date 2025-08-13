@@ -74,7 +74,7 @@ class AQIAgentController:
                 # Use similarity_search with fewer results and timeout handling
                 retrieved_docs = self.vector_store.similarity_search(
                     query, 
-                    k=5,  # Reduced from 16 to 5 for faster queries
+                    k=5,
                     filter=None  # Use None instead of empty dict
                 )
                 

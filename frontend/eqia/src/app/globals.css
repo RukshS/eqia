@@ -44,3 +44,28 @@ body {
 .markdown-content::-webkit-scrollbar-thumb:hover {
   background: #059669;
 }
+
+/* Custom scrollbar for chat messages area */
+.chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #10b981, #0d9488);
+  border-radius: 4px;
+  border: 1px solid #f8fafc;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #059669, #0f766e);
+}
+
+/* Smooth scrolling behavior */
+.chat-messages {
+  scroll-behavior: smooth;
+}

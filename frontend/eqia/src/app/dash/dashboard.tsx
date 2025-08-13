@@ -181,7 +181,7 @@ const Dashboard = () => {
     setInputMessage('');
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/agent/chat`, {
+      const res = await fetch(`${API_BASE}/api/agent/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: query })
@@ -409,18 +409,19 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (
-            // Chat messages display
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            // Chat messages display - Fixed height container with scrolling
+            <div className="flex-1 flex flex-col h-full">
+              {/* Messages container with fixed height and scrolling */}
+              <div className="flex-1 overflow-y-auto px-2 py-4 space-y-6 min-h-0 chat-messages">
                 {messages.map((message, index) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-3xl px-4 py-3 rounded-xl ${
+                    <div className={`max-w-4xl px-6 py-4 rounded-2xl shadow-lg ${
                       message.isUser 
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg' 
-                        : 'bg-white/80 backdrop-blur-sm text-slate-800 border border-slate-200 shadow-md'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' 
+                        : 'bg-white/90 backdrop-blur-sm text-slate-800 border border-slate-200'
                     }`}>
                       <MessageContent message={message} />
-                      <p className={`text-xs mt-1 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      <p className={`text-xs mt-3 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {message.timestamp}
                       </p>
                     </div>
@@ -428,23 +429,23 @@ const Dashboard = () => {
                 ))}
               </div>
               
-              {/* Input Area for chat mode */}
-              <div className="border-t border-slate-200 pt-4">
-                <div className="flex items-center gap-3">
+              {/* Fixed Input Area at bottom */}
+              <div className="flex-shrink-0 border-t border-slate-200 bg-white/80 backdrop-blur-sm p-4">
+                <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={handleKeyPress}
                       placeholder="Ask about soil or water monitoring..."
-                      className="w-full resize-none border border-slate-300 rounded-xl p-3 bg-white/80 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm"
-                      rows={1}
+                      className="w-full resize-none border border-slate-300 rounded-xl p-4 bg-white/90 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm text-sm leading-relaxed"
+                      rows={2}
                     />
                   </div>
                   <button 
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim() || isLoading}
-                    className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                    className="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex-shrink-0"
                     aria-label="Send message"
                   >
                     <PaperAirplaneIcon className="w-5 h-5" />
