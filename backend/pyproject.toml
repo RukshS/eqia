@@ -15,6 +15,7 @@ dependencies = [
     "langchain-openai>=0.3.29",
     "pypdf>=6.0.0",
     "python-dotenv>=1.1.1",
+    "requests>=2.31.0",
     "scikit-learn>=1.7.1",
     "sentence-transformers>=5.1.0",
     "supabase>=2.18.0",

@@ -211,7 +211,7 @@ const Dashboard = () => {
         {/* Sidebar Header */}
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-emarald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-sm">EQ</span>
             </div>
             <span className="font-semibold text-slate-800">EQIA Monitoring</span>
@@ -305,8 +305,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col p-8">
+        {/* Chat Area - Full height container */}
+        <div className="flex-1 flex flex-col min-h-0 p-6">
           {messages.length === 0 ? (
             // Welcome screen when no messages
             <div className="flex-1 flex flex-col justify-center items-center">
@@ -409,19 +409,19 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (
-            // Chat messages display - Fixed height container with scrolling
-            <div className="flex-1 flex flex-col h-full">
+            // Chat messages display - Full height with proper scrolling
+            <div className="flex-1 flex flex-col h-full min-h-0">
               {/* Messages container with fixed height and scrolling */}
-              <div className="flex-1 overflow-y-auto px-2 py-4 space-y-6 min-h-0 chat-messages">
+              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 min-h-0 chat-messages">
                 {messages.map((message, index) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-4xl px-6 py-4 rounded-2xl shadow-lg ${
+                    <div className={`max-w-3xl px-5 py-4 rounded-2xl shadow-lg break-words ${
                       message.isUser 
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' 
-                        : 'bg-white/90 backdrop-blur-sm text-slate-800 border border-slate-200'
+                        : 'bg-white/95 backdrop-blur-sm text-slate-800 border border-slate-200'
                     }`}>
                       <MessageContent message={message} />
-                      <p className={`text-xs mt-3 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      <p className={`text-xs mt-3 opacity-75 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {message.timestamp}
                       </p>
                     </div>
@@ -430,15 +430,15 @@ const Dashboard = () => {
               </div>
               
               {/* Fixed Input Area at bottom */}
-              <div className="flex-shrink-0 border-t border-slate-200 bg-white/80 backdrop-blur-sm p-4">
-                <div className="flex items-end gap-3">
+              <div className="flex-shrink-0 border-t border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-4 mt-4">
+                <div className="flex items-end gap-3 max-w-4xl mx-auto">
                   <div className="flex-1">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={handleKeyPress}
                       placeholder="Ask about soil or water monitoring..."
-                      className="w-full resize-none border border-slate-300 rounded-xl p-4 bg-white/90 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm text-sm leading-relaxed"
+                      className="w-full resize-none border border-slate-300 rounded-xl p-4 bg-white/95 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm text-sm leading-relaxed"
                       rows={2}
                     />
                   </div>
