@@ -211,7 +211,7 @@ const Dashboard = () => {
         {/* Sidebar Header */}
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 bg-gradient-to-br from-emarald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-sm">EQ</span>
             </div>
             <span className="font-semibold text-slate-800">EQIA Monitoring</span>
@@ -306,7 +306,7 @@ const Dashboard = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col p-8 min-h-0">
+        <div className="flex-1 flex flex-col p-8">
           {messages.length === 0 ? (
             // Welcome screen when no messages
             <div className="flex-1 flex flex-col justify-center items-center">
@@ -410,8 +410,8 @@ const Dashboard = () => {
             </div>
           ) : (
             // Chat messages display
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-[calc(100vh-300px)] chat-messages">
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
                 {messages.map((message, index) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-3xl px-4 py-3 rounded-xl ${
@@ -429,7 +429,7 @@ const Dashboard = () => {
               </div>
               
               {/* Input Area for chat mode */}
-              <div className="border-t border-slate-200 pt-4 bg-gradient-to-br from-slate-50 to-blue-50 -mx-8 -mb-8 px-8 pb-8">
+              <div className="border-t border-slate-200 pt-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <textarea
