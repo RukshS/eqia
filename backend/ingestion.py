@@ -1,4 +1,3 @@
-# import basics
 import os
 from dotenv import load_dotenv
 
@@ -23,7 +22,7 @@ if supabase_url is None or supabase_key is None:
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # initiate embeddings model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
 # load pdf docs from folder 'documents'
@@ -41,9 +40,8 @@ for i in range(0, len(docs), BATCH_SIZE):
     batch = docs[i:i+BATCH_SIZE]
     SupabaseVectorStore.from_documents(
         batch,
-        embeddings,
+        embedding_model,
         client=supabase,
         table_name="documents",
-        query_name="upsert_document",
-        chunk_size=1000,
+        query_name="upsert_document"
     )
