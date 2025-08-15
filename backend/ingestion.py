@@ -1,13 +1,13 @@
-# import basics
 import os
 from dotenv import load_dotenv
 
 # import langchain
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import SupabaseVectorStore
 from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings 
 
 # import supabase
 from supabase.client import Client, create_client
@@ -23,27 +23,37 @@ if supabase_url is None or supabase_key is None:
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # initiate embeddings model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-# embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+openai_text_embedding_3_large_client = OpenAIEmbeddings(model="text-embedding-3-large")
+gemini_embedding_001_client = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001",
+    task_type="retrieval_document"  # Optimized for document storage
+)
+qwen_embedding_client = HuggingFaceEmbeddings(
+    model_name="Qwen/Qwen3-Embedding-0.6B",
+    cache_folder="./models",  # Local cache directory
+    model_kwargs={'device': 'cpu'},  # Use 'cuda' if GPU is available
+    encode_kwargs={'normalize_embeddings': True}  # Recommended for retrieval
+)
 
 # load pdf docs from folder 'documents'
 loader = PyPDFDirectoryLoader("documents")
-
-# split the documents in multiple chunks
 documents = loader.load()
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+
+# split the documents in multiple chunks (optimized for RAG)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1024,    # Optimal for retrieval quality
+    chunk_overlap=256  # ~25% overlap to maintain context
+)
 docs = text_splitter.split_documents(documents)
 
-# store chunks in vector store
-# Store chunks in vector store in batches to avoid OpenAI token limit
+# Store chunks in vector store in batches to avoid token limits
 BATCH_SIZE = 100
 for i in range(0, len(docs), BATCH_SIZE):
     batch = docs[i:i+BATCH_SIZE]
     SupabaseVectorStore.from_documents(
         batch,
-        embeddings,
+        openai_text_embedding_3_large_client,
         client=supabase,
         table_name="documents",
-        query_name="upsert_document",
-        chunk_size=1000,
+        query_name="upsert_document"
     )

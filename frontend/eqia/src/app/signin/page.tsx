@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import SigninForm from '@/components/auth/SigninForm';
+import SigninForm from '@/app/auth/SigninForm';
 
 export const metadata: Metadata = {
   title: 'Sign In - EQIA',

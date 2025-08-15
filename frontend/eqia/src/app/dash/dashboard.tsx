@@ -1,6 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -30,9 +35,107 @@ interface SidebarItem {
   href?: string;
 }
 
+interface Message {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: string;
+}
+
+// Component to render message content with markdown support
+const MessageContent: React.FC<{ message: Message }> = ({ message }) => {
+  if (message.isUser) {
+    // User messages as plain text
+    return (
+      <div className="user-message">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+      </div>
+    );
+  }
+
+  // Bot messages with markdown rendering
+  return (
+    <div className="markdown-content">{" "}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex, rehypeHighlight]}
+        components={{
+          // Custom styling for markdown elements
+          h1: ({ children }) => <h1 className="text-lg font-bold text-slate-800 mb-3 mt-4 first:mt-0">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-base font-semibold text-slate-800 mb-2 mt-3">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-medium text-slate-800 mb-2 mt-2">{children}</h3>,
+          p: ({ children }) => <p className="text-sm leading-relaxed mb-3 last:mb-0 text-slate-700">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3 ml-2">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-3 ml-2">{children}</ol>,
+          li: ({ children }) => <li className="text-sm text-slate-700">{children}</li>,
+          code: ({ children, className }) => {
+            const isInline = !className;
+            return isInline ? (
+              <code className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-xs font-mono font-medium">
+                {children}
+              </code>
+            ) : (
+              <code className={`block bg-slate-900 text-slate-100 p-4 rounded-lg text-xs font-mono overflow-x-auto leading-relaxed ${className || ''}`}>
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => (
+            <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto mb-3 border border-slate-700">
+              {children}
+            </pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-emerald-500 pl-4 py-2 bg-emerald-50 rounded-r text-sm mb-3">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto mb-3 rounded-lg border border-slate-200">
+              <table className="min-w-full table-auto border-collapse">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-slate-50">{children}</thead>,
+          tbody: ({ children }) => <tbody className="bg-white">{children}</tbody>,
+          th: ({ children }) => (
+            <th className="border-b border-slate-200 px-4 py-2 text-left text-xs font-semibold text-slate-700 bg-slate-50">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-slate-100 px-4 py-2 text-xs text-slate-600">
+              {children}
+            </td>
+          ),
+          tr: ({ children }) => <tr className="hover:bg-slate-25">{children}</tr>,
+          strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+          em: ({ children }) => <em className="italic text-slate-700">{children}</em>,
+          a: ({ children, href }) => (
+            <a 
+              href={href} 
+              className="text-emerald-600 hover:text-emerald-700 underline decoration-emerald-300 hover:decoration-emerald-500 transition-colors font-medium" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          ),
+          hr: () => <hr className="border-slate-200 my-4" />,
+        }}
+      >
+        {message.text}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState<Array<{id: string, text: string, isUser: boolean, timestamp: string}>>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
   // Sample chat history data
   const chatHistory: ChatHistoryItem[] = [
@@ -55,65 +158,42 @@ const Dashboard = () => {
     { icon: PresentationChartLineIcon, label: 'Data Visualization' },
   ];
 
-  const generateResponse = (query: string): string => {
-    const lowerQuery = query.toLowerCase();
-    
-    // Soil monitoring responses
-    if (lowerQuery.includes('soil') || lowerQuery.includes('ph') || lowerQuery.includes('moisture') || lowerQuery.includes('nutrient')) {
-      if (lowerQuery.includes('ph')) {
-        return "Soil pH monitoring is crucial for crop health. Optimal pH ranges from 6.0-7.0 for most crops. I can help you analyze pH levels, recommend testing methods, and suggest amendments for pH correction.";
-      } else if (lowerQuery.includes('moisture')) {
-        return "Soil moisture monitoring helps optimize irrigation. Key parameters include volumetric water content, field capacity, and permanent wilting point. I can guide you through sensor placement and data interpretation.";
-      } else if (lowerQuery.includes('nutrient')) {
-        return "Soil nutrient analysis includes NPK (Nitrogen, Phosphorus, Potassium) testing, organic matter content, and micronutrient levels. I can help interpret results and recommend fertilization strategies.";
-      } else {
-        return "Soil monitoring encompasses pH, moisture, nutrients, temperature, and organic matter. I can help you establish monitoring protocols, interpret data, and make recommendations for soil health improvement.";
-      }
-    }
-    
-    // Water monitoring responses
-    else if (lowerQuery.includes('water') || lowerQuery.includes('quality') || lowerQuery.includes('contamination') || lowerQuery.includes('turbidity')) {
-      if (lowerQuery.includes('quality')) {
-        return "Water quality assessment includes physical, chemical, and biological parameters. Key indicators are pH, dissolved oxygen, turbidity, temperature, and bacterial content. I can help you design monitoring protocols.";
-      } else if (lowerQuery.includes('contamination')) {
-        return "Water contamination detection involves testing for heavy metals, pesticides, bacteria, and chemical pollutants. I can guide you through sampling procedures and interpretation of contamination levels.";
-      } else if (lowerQuery.includes('turbidity')) {
-        return "Turbidity measures water clarity and is a key indicator of water quality. High turbidity can indicate pollution or suspended particles. Normal levels are typically <1 NTU for drinking water.";
-      } else {
-        return "Water monitoring includes quality parameters like pH, dissolved oxygen, temperature, conductivity, and contamination levels. I can help you establish comprehensive water monitoring systems.";
-      }
-    }
-    
-    // General monitoring
-    else if (lowerQuery.includes('monitor') || lowerQuery.includes('test') || lowerQuery.includes('measure')) {
-      return "Environmental monitoring can focus on soil or water parameters. Soil monitoring includes pH, moisture, and nutrients. Water monitoring covers quality, contamination, and physical properties. What specific aspect would you like to explore?";
-    }
-    
-    // Default response
-    else {
-      return "I'm here to help with soil and water monitoring! You can ask about:\n• Soil pH, moisture, and nutrient analysis\n• Water quality assessment and contamination detection\n• Monitoring protocols and data interpretation\n• Environmental recommendations and best practices\n\nWhat would you like to know?";
-    }
-  };
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      const userMessage = {
-        id: Date.now().toString(),
-        text: inputMessage,
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      
-      const response = generateResponse(inputMessage);
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        isUser: false,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      
-      setMessages(prev => [...prev, userMessage, botMessage]);
-      setInputMessage('');
+    const userMessage = {
+      id: Date.now().toString(),
+      text: inputMessage,
+      isUser: true,
+      timestamp: new Date().toLocaleTimeString()
+    };
+
+    // Optimistically add a placeholder bot message while fetching
+    const placeholderId = (Date.now() + 1).toString();
+    const botPlaceholder = {
+      id: placeholderId,
+      text: 'Thinking...',
+      isUser: false,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    setMessages(prev => [...prev, userMessage, botPlaceholder]);
+    const query = inputMessage;
+    setInputMessage('');
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: query })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const answer = data.response || 'No response';
+      setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, text: answer } : m));
+    } catch (e: any) {
+      setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, text: `Error: ${e.message}` } : m));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -225,8 +305,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col p-8">
+        {/* Chat Area - Full height container */}
+        <div className="flex-1 flex flex-col min-h-0 p-6">
           {messages.length === 0 ? (
             // Welcome screen when no messages
             <div className="flex-1 flex flex-col justify-center items-center">
@@ -266,7 +346,7 @@ const Dashboard = () => {
                         </button>
                         <button 
                           onClick={handleSendMessage}
-                          disabled={!inputMessage.trim()}
+                          disabled={!inputMessage.trim() || isLoading}
                           className="p-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                           aria-label="Send message"
                         >
@@ -329,18 +409,19 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (
-            // Chat messages display
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-                {messages.map((message) => (
+            // Chat messages display - Full height with proper scrolling
+            <div className="flex-1 flex flex-col h-full min-h-0">
+              {/* Messages container with fixed height and scrolling */}
+              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 min-h-0 chat-messages">
+                {messages.map((message, index) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-3xl px-4 py-3 rounded-xl ${
+                    <div className={`max-w-3xl px-5 py-4 rounded-2xl shadow-lg break-words ${
                       message.isUser 
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg' 
-                        : 'bg-white/80 backdrop-blur-sm text-slate-800 border border-slate-200 shadow-md'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' 
+                        : 'bg-white/95 backdrop-blur-sm text-slate-800 border border-slate-200'
                     }`}>
-                      <p className="whitespace-pre-wrap">{message.text}</p>
-                      <p className={`text-xs mt-1 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      <MessageContent message={message} />
+                      <p className={`text-xs mt-3 opacity-75 ${message.isUser ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {message.timestamp}
                       </p>
                     </div>
@@ -348,28 +429,31 @@ const Dashboard = () => {
                 ))}
               </div>
               
-              {/* Input Area for chat mode */}
-              <div className="border-t border-slate-200 pt-4">
-                <div className="flex items-center gap-3">
+              {/* Fixed Input Area at bottom */}
+              <div className="flex-shrink-0 border-t border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-4 mt-4">
+                <div className="flex items-end gap-3 max-w-4xl mx-auto">
                   <div className="flex-1">
                     <textarea
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={handleKeyPress}
                       placeholder="Ask about soil or water monitoring..."
-                      className="w-full resize-none border border-slate-300 rounded-xl p-3 bg-white/80 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm"
-                      rows={1}
+                      className="w-full resize-none border border-slate-300 rounded-xl p-4 bg-white/95 backdrop-blur-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-32 shadow-sm text-sm leading-relaxed"
+                      rows={2}
                     />
                   </div>
                   <button 
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim()}
-                    className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                    disabled={!inputMessage.trim() || isLoading}
+                    className="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex-shrink-0"
                     aria-label="Send message"
                   >
                     <PaperAirplaneIcon className="w-5 h-5" />
                   </button>
                 </div>
+                {isLoading && (
+                  <p className="mt-2 text-xs text-slate-500">Waiting for backend response...</p>
+                )}
               </div>
             </div>
           )}

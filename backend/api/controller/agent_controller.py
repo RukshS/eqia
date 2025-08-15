@@ -28,12 +28,19 @@ class AQIAgentController:
             raise ValueError("OPENAI_API_KEY not found in environment variables. Please add it to your .env file.")
 
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-        self.vector_store = SupabaseVectorStore(
-            embedding=self.embeddings,
-            client=self.supabase,
-            table_name="documents",
-            query_name="match_eqia_documents",
-        )
+        
+        # Initialize Supabase vector store with explicit function parameters
+        try:
+            self.vector_store = SupabaseVectorStore(
+                embedding=self.embeddings,
+                client=self.supabase,
+                table_name="documents",
+                query_name="match_eqia_documents",
+            )
+        except Exception as e:
+            print(f"Warning: Vector store initialization failed: {e}")
+            print("The system will work without document retrieval.")
+            self.vector_store = None
 
         class StreamingCallbackHandler(AsyncCallbackHandler):
             def __init__(self):
@@ -58,7 +65,10 @@ class AQIAgentController:
 
         @tool(description="Retrieve relevant documents about air quality and AQI information based on the query", response_format="content_and_artifact")
         def retrieve(query: str):
-            retrieved_docs = self.vector_store.similarity_search(query, k=16)
+            retrieved_docs = []
+            if self.vector_store is not None:
+                retrieved_docs = self.vector_store.similarity_search(query)
+
             serialized = "\n\n".join(
                 (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
                 for doc in retrieved_docs
@@ -66,7 +76,7 @@ class AQIAgentController:
             return serialized, retrieved_docs
 
         self.tools = [retrieve]
-        # Update the system prompt to instruct the model to use latex_tool for all math output
+        
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", r"You are a helpful assistant specialized in Air Quality Index (AQI) information."
             "You are to find relevant information about air quality, pollution, AQI calculations, health impacts, and related topics."
@@ -85,19 +95,27 @@ class AQIAgentController:
         try:
             callback_handler = self.StreamingCallbackHandler()
             config: RunnableConfig = {"callbacks": [callback_handler]}
+            
+            # Start the agent execution task
             task = asyncio.create_task(
                 self.agent_executor.ainvoke({"input": user_input}, config=config)
             )
+            
             last_token_count = 0
-            while not callback_handler.finished:
-                await asyncio.sleep(0.1)
+            
+            # Stream tokens as they come in
+            while not task.done() or last_token_count < len(callback_handler.tokens):
+                await asyncio.sleep(0.05)  # Reduced sleep time for better responsiveness
+                
+                # Send new tokens
                 current_tokens = callback_handler.tokens[last_token_count:]
                 for token in current_tokens:
                     data = json.dumps({"token": token, "type": "token"})
                     yield f"data: {data}\n\n"
+                
                 last_token_count = len(callback_handler.tokens)
-                if task.done():
-                    break
+            
+            # Get the final result
             try:
                 result = await task
                 final_data = json.dumps({
@@ -112,6 +130,7 @@ class AQIAgentController:
                     "type": "error"
                 })
                 yield f"data: {error_data}\n\n"
+                
         except Exception as e:
             error_data = json.dumps({
                 "token": f"\nStream Error: {str(e)}",
@@ -126,10 +145,57 @@ class AQIAgentController:
             yield chunk
 
     async def chat(self, request):
-        data = await request.json()
-        user_input = data.get("message", "")
-        response = await self.agent_executor.ainvoke({"input": user_input})
-        return {"response": response["output"]}
+        """
+        Handle non-streaming chat requests with proper error handling and response formatting
+        """
+        try:
+            data = await request.json()
+            user_input = data.get("message", "")
+            
+            if not user_input.strip():
+                return {
+                    "error": "Message cannot be empty",
+                    "status": "error"
+                }
+            
+            # Execute the agent
+            response = await self.agent_executor.ainvoke({"input": user_input})
+            
+            # Extract and format the response
+            agent_output = response.get("output", "")
+            intermediate_steps = response.get("intermediate_steps", [])
+            
+            # Format tool usage information
+            tools_used = []
+            for step in intermediate_steps:
+                if hasattr(step, '__len__') and len(step) >= 2:
+                    action, observation = step[0], step[1]
+                    tools_used.append({
+                        "tool": getattr(action, 'tool', 'unknown'),
+                        "tool_input": getattr(action, 'tool_input', {}),
+                        "observation_length": len(str(observation)) if observation else 0
+                    })
+            
+            return {
+                "response": agent_output,
+                "status": "success",
+                "metadata": {
+                    "tools_used": tools_used,
+                    "input_length": len(user_input),
+                    "output_length": len(agent_output)
+                }
+            }
+            
+        except ValueError as e:
+            return {
+                "error": f"Invalid input: {str(e)}",
+                "status": "error"
+            }
+        except Exception as e:
+            return {
+                "error": f"An error occurred: {str(e)}",
+                "status": "error"
+            }
 
     def health_check(self):
         return {"status": "healthy"}
