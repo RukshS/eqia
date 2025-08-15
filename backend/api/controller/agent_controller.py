@@ -61,13 +61,13 @@ class AQIAgentController:
 
         self.StreamingCallbackHandler = StreamingCallbackHandler
 
-        self.llm = ChatOpenAI(model="gpt-4.1", temperature=0, streaming=True)
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0, streaming=True)
 
         @tool(description="Retrieve relevant documents about air quality and AQI information based on the query", response_format="content_and_artifact")
         def retrieve(query: str):
             retrieved_docs = []
             if self.vector_store is not None:
-                retrieved_docs = self.vector_store.similarity_search(query)
+                retrieved_docs = self.vector_store.similarity_search(query, k=16)
 
             serialized = "\n\n".join(
                 (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
