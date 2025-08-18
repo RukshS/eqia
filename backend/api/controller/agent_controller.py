@@ -28,15 +28,15 @@ class WQIAgentController:
         if not os.environ.get("OPENAI_API_KEY"):
             raise ValueError("OPENAI_API_KEY not found in environment variables. Please add it to your .env file.")
 
-        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
         # Initialize Supabase vector store with explicit function parameters
         try:
             self.vector_store = SupabaseVectorStore(
                 embedding=self.embeddings,
                 client=self.supabase,
-                table_name="documents",
-                query_name="match_eqia_documents",
+                table_name="water_quality_info_documents",
+                query_name="match_aira_water_quality_info_documents",
             )
         except Exception as e:
             print(f"Warning: Vector store initialization failed: {e}")
