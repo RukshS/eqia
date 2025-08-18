@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import requests
 from dotenv import load_dotenv
 from typing import AsyncGenerator
 from langchain.agents import AgentExecutor
@@ -15,7 +16,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.outputs import LLMResult
 from langchain_core.runnables import RunnableConfig
 
-class AQIAgentController:
+class WQIAgentController:
     def __init__(self):
         load_dotenv()
         supabase_url = os.environ.get("SUPABASE_URL")
@@ -28,7 +29,7 @@ class AQIAgentController:
             raise ValueError("OPENAI_API_KEY not found in environment variables. Please add it to your .env file.")
 
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-        
+
         # Initialize Supabase vector store with explicit function parameters
         try:
             self.vector_store = SupabaseVectorStore(
@@ -63,27 +64,47 @@ class AQIAgentController:
 
         self.llm = ChatOpenAI(model="gpt-4o", temperature=0, streaming=True)
 
-        @tool(description="Retrieve relevant documents about air quality and AQI information based on the query", response_format="content_and_artifact")
-        def retrieve(query: str):
+        @tool(description="Retrieve relevant documents about water quality and WQI information based on the query")
+        def retrieve_wqi(query: str):
             retrieved_docs = []
             if self.vector_store is not None:
                 retrieved_docs = self.vector_store.similarity_search(query, k=16)
-
             serialized = "\n\n".join(
-                (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
-                for doc in retrieved_docs
-            )
-            return serialized, retrieved_docs
+                f"Source: {doc.metadata}\nContent: {doc.page_content}" for doc in retrieved_docs
+            ) or "No relevant documents found."
+            return serialized
 
-        self.tools = [retrieve]
-        
+        @tool(description="Search the web using Tavily API for unrelated queries")
+        def tavily_search(query: str):
+            tavily_api_key = os.environ.get("TAVILY_API_KEY")
+            if not tavily_api_key:
+                return f"I can't answer this directly. Please use a web search like https://www.tavily.com/ to find your answer for: {query}"
+            url = "https://api.tavily.com/search"
+            payload = {"query": query, "api_key": tavily_api_key}
+            try:
+                response = requests.post(url, json=payload, timeout=10)
+                if response.ok:
+                    data = response.json()
+                    return f"Web search result: {data.get('answer', 'No result found.')}"
+                else:
+                    return f"Tavily search failed: {response.text}"
+            except Exception as e:
+                return f"Tavily search error: {str(e)}"
+
+        # Only WQI retrieval + Tavily as fallback for out-of-domain queries
+        self.tools = [retrieve_wqi, tavily_search]
+
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", r"You are a helpful assistant specialized in Air Quality Index (AQI) information."
-            "You are to find relevant information about air quality, pollution, AQI calculations, health impacts, and related topics."
-            "Always provide accurate and helpful responses based on the retrieved information."
-            "Whenever you need to output a mathematical expression, always use LaTex format it, using $...$ for inline math and $$...$$ for block math."
-            "Use $ ... $ instead of (...) for inline Latex. Do not use any other delimiters for LaTeX."
-            "Avoid answering anything other than air quality and air pollution and air related"),
+            ("system",
+               r"You are a helpful assistant specialized exclusively in Water Quality Index (WQI) information. "
+              "You must answer only queries related to water quality, water pollution, quality parameters (e.g., pH, turbidity, dissolved oxygen), WQI calculations, standards/guidelines, and related environmental or health impacts. "
+              "If the user's question is not about WQI topics, reply: "
+              "I can't answer this directly because it is outside the Water Quality Information scope. "
+              "Please use a web search like https://www.tavily.com/ to find your answer. "
+              "Always provide accurate and helpful responses based on the retrieved information. "
+              "Whenever you need to output a mathematical expression, always use LaTeX format, using $...$ for inline math and $$...$$ for block math. "
+              "Use $ ... $ instead of (...) for inline LaTeX. Do not use any other delimiters for LaTeX."
+             ),
             ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
@@ -144,28 +165,17 @@ class AQIAgentController:
         async for chunk in self.generate_stream(user_input):
             yield chunk
 
-    async def chat(self, request):
-        """
-        Handle non-streaming chat requests with proper error handling and response formatting
-        """
+    async def chat(self, message: str):
+        """Handle non-streaming chat requests given a raw message string."""
         try:
-            data = await request.json()
-            user_input = data.get("message", "")
-            
+            user_input = message or ""
             if not user_input.strip():
-                return {
-                    "error": "Message cannot be empty",
-                    "status": "error"
-                }
-            
-            # Execute the agent
+                return {"error": "Message cannot be empty", "status": "error"}
+
             response = await self.agent_executor.ainvoke({"input": user_input})
-            
-            # Extract and format the response
             agent_output = response.get("output", "")
             intermediate_steps = response.get("intermediate_steps", [])
-            
-            # Format tool usage information
+
             tools_used = []
             for step in intermediate_steps:
                 if hasattr(step, '__len__') and len(step) >= 2:
@@ -175,7 +185,7 @@ class AQIAgentController:
                         "tool_input": getattr(action, 'tool_input', {}),
                         "observation_length": len(str(observation)) if observation else 0
                     })
-            
+
             return {
                 "response": agent_output,
                 "status": "success",
@@ -185,17 +195,10 @@ class AQIAgentController:
                     "output_length": len(agent_output)
                 }
             }
-            
         except ValueError as e:
-            return {
-                "error": f"Invalid input: {str(e)}",
-                "status": "error"
-            }
+            return {"error": f"Invalid input: {str(e)}", "status": "error"}
         except Exception as e:
-            return {
-                "error": f"An error occurred: {str(e)}",
-                "status": "error"
-            }
+            return {"error": f"An error occurred: {str(e)}", "status": "error"}
 
     def health_check(self):
         return {"status": "healthy"}
