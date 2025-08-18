@@ -23,10 +23,12 @@ import {
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
 
-interface ChatHistoryItem {
+// A chat session (like ChatGPT sidebar entry)
+interface ChatSession {
   id: string;
-  title: string;
-  timestamp: string;
+  title: string; // Derived from first user question
+  timestamp: string; // Last updated timestamp (relative display can be formatted later)
+  messages: Message[];
 }
 
 interface SidebarItem {
@@ -133,19 +135,61 @@ const MessageContent: React.FC<{ message: Message }> = ({ message }) => {
 
 const Dashboard = () => {
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  // All chat sessions persisted in localStorage
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  // Current active session id
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  // Convenience derived messages (messages of current session)
+  const messages = sessions.find(s => s.id === currentSessionId)?.messages || [];
   const [isLoading, setIsLoading] = useState(false);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
-  // Sample chat history data
-  const chatHistory: ChatHistoryItem[] = [
-    { id: '1', title: 'Soil pH monitoring in agricultural fields', timestamp: '2 hours ago' },
-    { id: '2', title: 'Water quality assessment parameters', timestamp: '1 day ago' },
-    { id: '3', title: 'Soil moisture sensor calibration', timestamp: '2 days ago' },
-    { id: '4', title: 'Water contamination detection methods', timestamp: '3 days ago' },
-    { id: '5', title: 'Nutrient analysis in soil samples', timestamp: '1 week ago' },
-    { id: '6', title: 'Water turbidity measurement techniques', timestamp: '1 week ago' },
-  ];
+  // Load sessions from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eqia_chat_sessions');
+      if (raw) {
+        const parsed: ChatSession[] = JSON.parse(raw);
+        setSessions(parsed);
+        // Select most recent session if any
+        if (parsed.length) setCurrentSessionId(parsed[0].id);
+      } else {
+        // Initialize with a blank session
+        handleNewSession();
+      }
+    } catch (e) {
+      console.warn('Failed to load sessions', e);
+      handleNewSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist sessions whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('eqia_chat_sessions', JSON.stringify(sessions));
+    } catch (e) {
+      console.warn('Failed to save sessions', e);
+    }
+  }, [sessions]);
+
+  // Create a fresh session
+  const handleNewSession = () => {
+    const newSession: ChatSession = {
+      id: Date.now().toString(),
+      title: 'New session',
+      timestamp: new Date().toISOString(),
+      messages: []
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+  };
+
+  // Select existing session
+  const handleSelectSession = (id: string) => {
+    if (isLoading) return; // avoid switching while loading
+    setCurrentSessionId(id);
+  };
 
   // Sidebar navigation items
   const sidebarItems: SidebarItem[] = [
@@ -158,8 +202,26 @@ const Dashboard = () => {
     { icon: PresentationChartLineIcon, label: 'Data Visualization' },
   ];
 
+  // Relative time formatter (simple)
+  const formatRelative = (iso: string) => {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const sec = Math.floor(diffMs / 1000);
+    if (sec < 60) return 'just now';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const day = Math.floor(hr / 24);
+    if (day < 7) return `${day}d ago`;
+    return new Date(iso).toLocaleDateString();
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
+    if (!currentSessionId) handleNewSession(); // safety
+
+    const sessionId = currentSessionId || sessions[0]?.id; // after possible new session
+    if (!sessionId) return; // should not happen
 
     const userMessage = {
       id: Date.now().toString(),
@@ -167,16 +229,25 @@ const Dashboard = () => {
       isUser: true,
       timestamp: new Date().toLocaleTimeString()
     };
-
-    // Optimistically add a placeholder bot message while fetching
+    // Optimistically update session with user + placeholder bot
     const placeholderId = (Date.now() + 1).toString();
-    const botPlaceholder = {
+    const botPlaceholder: Message = {
       id: placeholderId,
       text: 'Thinking...',
       isUser: false,
       timestamp: new Date().toLocaleTimeString()
     };
-    setMessages(prev => [...prev, userMessage, botPlaceholder]);
+    setSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      const newMessages = [...s.messages, userMessage, botPlaceholder];
+      // Derive title from first user message if still default
+      let newTitle = s.title;
+      if (s.title === 'New session') {
+        const firstUserText = userMessage.text.trim();
+        newTitle = firstUserText.slice(0, 48) + (firstUserText.length > 48 ? '…' : '');
+      }
+      return { ...s, messages: newMessages, title: newTitle, timestamp: new Date().toISOString() };
+    }));
     const query = inputMessage;
     setInputMessage('');
     setIsLoading(true);
@@ -188,10 +259,16 @@ const Dashboard = () => {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const answer = data.response || 'No response';
-      setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, text: answer } : m));
+      const answer = data.response || data.result || data.message || (data.status === 'error' ? (data.error || 'Error') : 'No response');
+      setSessions(prev => prev.map(s => {
+        if (s.id !== sessionId) return s;
+        return { ...s, messages: s.messages.map(m => m.id === placeholderId ? { ...m, text: answer } : m), timestamp: new Date().toISOString() };
+      }));
     } catch (e: any) {
-      setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, text: `Error: ${e.message}` } : m));
+      setSessions(prev => prev.map(s => {
+        if (s.id !== sessionId) return s;
+        return { ...s, messages: s.messages.map(m => m.id === placeholderId ? { ...m, text: `Error: ${e.message}` } : m), timestamp: new Date().toISOString() };
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -256,20 +333,32 @@ const Dashboard = () => {
             <div className="border-t border-slate-200"></div>
           </div>
 
-          {/* Monitoring History Section */}
+          {/* Monitoring History Section (Chat Sessions) */}
           <div className="p-3">
-            <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">
-              Recent Monitoring Sessions
-            </h3>
-            <div className="space-y-1">
-              {chatHistory.map((chat) => (
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Sessions</h3>
+              <button
+                onClick={handleNewSession}
+                className="text-xs px-2 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
+              >New</button>
+            </div>
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1 custom-scroll">
+              {sessions.length === 0 && (
+                <div className="text-xs text-slate-500 italic px-2 py-1">No sessions yet</div>
+              )}
+              {sessions.map(session => (
                 <button
-                  key={chat.id}
-                  className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 hover:text-emerald-700 rounded-lg transition-all duration-200 group"
+                  key={session.id}
+                  onClick={() => handleSelectSession(session.id)}
+                  className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 group flex flex-col border border-transparent hover:border-emerald-200 hover:bg-emerald-50/60 ${
+                    session.id === currentSessionId ? 'bg-emerald-100/70 border-emerald-300 text-emerald-800' : 'text-slate-700'
+                  }`}
                 >
-                  <div className="truncate font-medium">{chat.title}</div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {chat.timestamp}
+                  <div className="truncate font-medium">{session.title}</div>
+                  <div className="text-xs mt-1 flex items-center gap-2 text-slate-500 group-hover:text-slate-600">
+                    <span>{formatRelative(session.timestamp)}</span>
+                    <span className="opacity-40">·</span>
+                    <span>{session.messages.filter(m => m.isUser).length} msgs</span>
                   </div>
                 </button>
               ))}
@@ -277,18 +366,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-200">
-          <div className="flex items-center gap-3 text-sm text-slate-700">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-md">
-              <span className="text-white font-semibold text-xs">K</span>
-            </div>
-            <div>
-              <div className="font-medium">Koneswaran Kapeilaash</div>
-              <div className="text-xs text-slate-500">Free Plan</div>
-            </div>
-          </div>
-        </div>
+  {/* Sidebar Footer removed */}
       </div>
 
       {/* Main Content Area */}
