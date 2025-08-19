@@ -1,23 +1,18 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
-from api.controller.agent_controller import AQIAgentController
+from api.controller.agent_controller import WQIAgentController
 
 router = APIRouter(prefix="/agent")
-controller = AQIAgentController()
+controller = WQIAgentController()
 
 @router.post("/chat")
 async def chat(request: Request):
-    """
-    Handle non-streaming chat requests
-    Returns structured response with error handling
-    """
     try:
-        result = await controller.chat(request)
-        
-        # Check if the result indicates an error
+        data = await request.json()
+        message = data.get("message")
+        result = await controller.chat(message)
         if result.get("status") == "error":
             raise HTTPException(status_code=400, detail=result)
-        
         return result
     except HTTPException:
         raise
@@ -27,19 +22,19 @@ async def chat(request: Request):
             "status": "error"
         })
 
-@router.post("/chat/stream")
-async def chat_stream(request: Request):
-    return StreamingResponse(
-        controller.generate_stream_from_request(request),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+# @router.post("/chat/stream")
+# async def chat_stream(request: Request):
+#     return StreamingResponse(
+#         controller.generate_stream_from_request(request),
+#         media_type="text/event-stream",
+#         headers={
+#             "Cache-Control": "no-cache",
+#             "Connection": "keep-alive",
+#             "Access-Control-Allow-Origin": "*",
+#             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+#             "Access-Control-Allow-Headers": "*",
+#         }
+#     )
 
 @router.get("/health")
 async def health_check():
