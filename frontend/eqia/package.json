@@ -11,9 +11,13 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     "@tailwindcss/typography": "^0.5.16",
 >>>>>>> 5c5bad20bbe98aa0de4283e9c096c1d9a2c741fd
+=======
+    "@tailwindcss/typography": "^0.5.16",
+>>>>>>> development
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.536.0",
@@ -22,13 +26,19 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> development
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
+<<<<<<< HEAD
 >>>>>>> 5c5bad20bbe98aa0de4283e9c096c1d9a2c741fd
+=======
+>>>>>>> development
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

@@ -3,10 +3,18 @@ from dotenv import load_dotenv
 
 # import langchain
 from langchain_community.document_loaders import PyPDFDirectoryLoader
+<<<<<<< HEAD
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import SupabaseVectorStore
 from langchain_openai import OpenAIEmbeddings
+=======
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import SupabaseVectorStore
+from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings 
+>>>>>>> development
 
 # import supabase
 from supabase.client import Client, create_client
@@ -22,12 +30,30 @@ if supabase_url is None or supabase_key is None:
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # initiate embeddings model
+<<<<<<< HEAD
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+=======
+openai_text_embedding_3_small_client = OpenAIEmbeddings(model="text-embedding-3-small")
+
+# gemini_embedding_001_client = GoogleGenerativeAIEmbeddings(
+#     model="models/gemini-embedding-001",
+#     task_type="retrieval_document"  # Optimized for document storage
+# )
+
+# qwen_embedding_client = HuggingFaceEmbeddings(
+#     model_name="Qwen/Qwen3-Embedding-0.6B",
+#     cache_folder="./models",  # Local cache directory
+#     model_kwargs={'device': 'cpu'},  # Use 'cuda' if GPU is available
+#     encode_kwargs={'normalize_embeddings': True}  # Recommended for retrieval
+# )
+>>>>>>> development
 
 # load pdf docs from folder 'documents'
-loader = PyPDFDirectoryLoader("documents")
+water_info_loader = PyPDFDirectoryLoader("documents/documents_water_quality")
+water_info_documents = water_info_loader.load()
 
+<<<<<<< HEAD
 # split the documents in multiple chunks
 documents = loader.load()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
@@ -35,13 +61,43 @@ docs = text_splitter.split_documents(documents)
 
 # store chunks in vector store
 # Store chunks in vector store in batches to avoid OpenAI token limit
+=======
+air_info_loader = PyPDFDirectoryLoader("documents/documents_air_quality")
+air_info_documents = air_info_loader.load()
+
+# split the documents in multiple chunks (optimized for RAG)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1024,    # Optimal for retrieval quality
+    chunk_overlap=256  # ~25% overlap to maintain context
+)
+water_docs = text_splitter.split_documents(water_info_documents)
+air_docs = text_splitter.split_documents(air_info_documents)
+
+# Store chunks in vector store in batches to avoid token limits
+>>>>>>> development
 BATCH_SIZE = 100
-for i in range(0, len(docs), BATCH_SIZE):
-    batch = docs[i:i+BATCH_SIZE]
+for i in range(0, len(water_docs), BATCH_SIZE):
+    batch = water_docs[i:i+BATCH_SIZE]
     SupabaseVectorStore.from_documents(
         batch,
+<<<<<<< HEAD
         embedding_model,
+=======
+        openai_text_embedding_3_small_client,
         client=supabase,
-        table_name="documents",
+        table_name="water_quality_info_documents",
+        query_name="upsert_document2"
+    )
+
+    # Store chunks in vector store in batches to avoid token limits
+BATCH_SIZE = 100
+for i in range(0, len(air_docs), BATCH_SIZE):
+    batch = air_docs[i:i+BATCH_SIZE]
+    SupabaseVectorStore.from_documents(
+        batch,
+        openai_text_embedding_3_small_client,
+>>>>>>> development
+        client=supabase,
+        table_name="air_quality_info_documents",
         query_name="upsert_document"
     )
