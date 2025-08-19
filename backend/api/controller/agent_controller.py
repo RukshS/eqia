@@ -83,7 +83,7 @@ class AQIAgentController:
             "Always provide accurate and helpful responses based on the retrieved information."
             "Whenever you need to output a mathematical expression, always use LaTex format it, using $...$ for inline math and $$...$$ for block math."
             "Use $ ... $ instead of (...) for inline Latex. Do not use any other delimiters for LaTeX."
-            "Avoid answering anything other than air quality and air pollution and air related"),
+            "Avoid answering anything, other than air quality and air pollution and air related"),
             ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
